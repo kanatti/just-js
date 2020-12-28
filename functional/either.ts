@@ -1,3 +1,5 @@
+import { map } from "rambda";
+
 interface Either {
     (x: any): {
         chain: (f: Function) => any,
@@ -13,7 +15,7 @@ const Right: Either = (x: any) => ({
 });
 
 const Left:  Either = (x: any) => ({
-    chain: (f: Function) => f(x),
+    chain: (f: Function) => Left(x),
     map: (f: Function) => Left(x),
     fold: (f: Function, _g: Function) => f(x)
 });
@@ -48,3 +50,43 @@ const lee = findStudent("cs-3")
 
 console.log(john);
 console.log(lee);
+
+
+// File Example
+
+// A fake read file method
+function fs_readfile(filename: string) {
+    if (filename === "config.json") {
+        return "{\"port\": 3000}"
+    } else {
+        throw new Error("ERROR: Cannot find file");
+    }
+}
+
+const tryCatch = (f: Function) => {
+    try {
+        return Right(f());
+    } catch (err) {
+        return Left(err);
+    }
+};
+
+// Redefining unpure functions wrapped in Either
+const readFileSync = (path: string) => tryCatch(() => fs_readfile(path));
+
+const parseJSON = (contents: string) => {
+    console.log("parsing " + contents)
+    return tryCatch(() => JSON.parse(contents));
+};
+
+const getPort = (filename: string) =>
+    readFileSync(filename)
+    .chain(parseJSON)
+    .map(config => config.port)
+    .fold(
+        () => 8080, // Default port when no config file present
+        x => x
+    );
+
+console.log(getPort("config.json"));
+console.log(getPort("noconfig.json"))
